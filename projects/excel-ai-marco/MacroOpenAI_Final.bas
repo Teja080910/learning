@@ -89,27 +89,21 @@ REM ============================================================
                         oSheet.getCellByPosition(4, nFila - 1).setString("Generando imagenes...")
                         Wait(2000)
                         On Error Resume Next
-                        Dim sImagenes
-                        Dim nErrorBeforeDalle
-                        nErrorBeforeDalle = Err.Number
-                        Err.Clear
-                        sImagenes = GenerarImagenesProducto(sImageURL, sDescripcion, nFila)
+                        Dim sImagenURL
+                        sImagenURL = GenerarImagenDALLEDirecto(sDescripcion)
                         Dim nErrorAfterDalle
                         nErrorAfterDalle = Err.Number
                         Err.Clear
                         
-                        If nErrorAfterDalle <> 0 Then
+                        If nErrorAfterDalle <> 0 Or Left(sImagenURL, 5) = "Error" Then
                             oSheet.getCellByPosition(4, nFila - 1).setString("Error en imagenes")
                             oSheet.getCellByPosition(5, nFila - 1).setString("")
                         Else
-                            REM Si sImagenes es una URL (contiene http), guardarla en columna F
-                            If InStr(sImagenes, "http") > 0 Then
-                                oSheet.getCellByPosition(4, nFila - 1).setString("Image generated")
-                                oSheet.getCellByPosition(5, nFila - 1).setString(sImagenes)
-                            Else
-                                oSheet.getCellByPosition(4, nFila - 1).setString(sImagenes)
-                                oSheet.getCellByPosition(5, nFila - 1).setString("")
-                            End If
+                            REM Insertar imagen directamente desde la URL de DALL-E
+                            oSheet.getCellByPosition(4, nFila - 1).setString("Inserting image...")
+                            InsertarImagenDesdeURL(oDoc, oSheet, sImagenURL, nFila)
+                            oSheet.getCellByPosition(4, nFila - 1).setString("Image saved")
+                            oSheet.getCellByPosition(5, nFila - 1).setString(sImagenURL)
                         End If
                         Err.Clear
                         On Error GoTo 0
@@ -1535,6 +1529,93 @@ Sub ProcesarImagenesSinColor()
     
     MsgBox "COMPLETADO" & Chr(10) & "Procesadas: " & nProcesadas & Chr(10) & "Errores: " & nErrores & Chr(10) & "Tiempo: " & nTiempo & " min"
 End Sub
+
+REM Inserta una imagen directamente desde una URL en la hoja de calculo en la columna G
+Sub InsertarImagenDesdeURL(oDoc, oSheet, sImageURL, nFila)
+    Dim oDrawPage
+    Dim oGraphicProvider
+    Dim oImage
+    Dim oGraphics
+    Dim aGraphicArgs()
+    
+    On Error Resume Next
+    
+    REM Obtener DrawPage del sheet
+    oDrawPage = oSheet.getDrawPage()
+    If isNull(oDrawPage) Then
+        Exit Sub
+    End If
+    
+    REM Crear proveedor de graficos
+    oGraphicProvider = CreateUnoService("com.sun.star.graphic.GraphicProvider")
+    
+    If isNull(oGraphicProvider) Then
+        Exit Sub
+    End If
+    
+    REM Cargar imagen directamente desde URL
+    ReDim aGraphicArgs(0)
+    aGraphicArgs(0) = CreateUnoService("com.sun.star.beans.PropertyValue")
+    aGraphicArgs(0).Name = "URL"
+    aGraphicArgs(0).Value = sImageURL
+    
+    oGraphics = oGraphicProvider.queryGraphic(aGraphicArgs())
+    
+    If isNull(oGraphics) Then
+        Exit Sub
+    End If
+    
+    REM Crear imagen
+    oImage = oDoc.createInstance("com.sun.star.drawing.GraphicObjectShape")
+    
+    If Not isNull(oImage) Then
+        REM Asignar grafico
+        oImage.Graphic = oGraphics
+        
+        REM Posicion y tamaño de la imagen
+        Dim nXPos, nYPos, nWidth, nHeight
+        nXPos = 6000 REM Column G
+        nYPos = (nFila - 1) * 500
+        nWidth = 2500
+        nHeight = 2500
+        
+        oImage.Position = CreateUnoStruct("com.sun.star.awt.Point")
+        oImage.Position.X = nXPos
+        oImage.Position.Y = nYPos
+        
+        oImage.Size = CreateUnoStruct("com.sun.star.awt.Size")
+        oImage.Size.Width = nWidth
+        oImage.Size.Height = nHeight
+        
+        REM Agregar imagen al DrawPage
+        oDrawPage.add(oImage)
+    End If
+    
+    On Error GoTo 0
+End Sub
+
+REM Genera una imagen con DALL-E y retorna directamente la URL (sin descargar localmente)
+Function GenerarImagenDALLEDirecto(sDescripcion)
+    Dim sPrompt
+    Dim aContextos(2) As String
+    Dim aVistas(1) As String
+    Dim sImagenURL
+    
+    REM Definir contextos y vistas
+    aContextos(0) = "urban city street background"
+    aContextos(1) = "beach seaside background"
+    aContextos(2) = "mountain rural countryside background"
+    
+    aVistas(0) = "front view"
+    aVistas(1) = "side profile view"
+    
+    REM Usar primer contexto y vista
+    sPrompt = "Professional e-commerce product photography: " & sDescripcion & " displayed on a fashion model in a tasteful, professional manner, " & aVistas(0) & ", " & aContextos(0) & ", natural daylight, high quality, clean and professional style, suitable for online retail catalog"
+    
+    sImagenURL = GenerarImagenDALLE(sPrompt)
+    
+    GenerarImagenDALLEDirecto = sImagenURL
+End Function
 
 REM Funcion para diagnosticar si curl esta instalado
 Sub DiagnosticarCurl()
