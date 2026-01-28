@@ -627,7 +627,7 @@ REM ============================================================
             Q = Chr(34)
             
             REM Definir carpeta de destino
-            sCarpetaDestino = "D:\macro_images"
+            sCarpetaDestino = "C:\macro_images"
             
             REM Crear carpeta si no existe
             sComando = "if not exist " & Q & sCarpetaDestino & Q & " mkdir " & Q & sCarpetaDestino & Q

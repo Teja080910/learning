@@ -189,14 +189,24 @@ Function LlamarOpenAI(sURL)
     sResponseFile = sTempDir & "/openai_response.txt"
     sJsonFile = sTempDir & "/openai_request.json"
     
-    REM Construir JSON para la API
-    sJsonBody = "{" & Q & "model" & Q & ": " & Q & "gpt-4o-mini" & Q & ", "
-    sJsonBody = sJsonBody & Q & "messages" & Q & ": [{" & Q & "role" & Q & ": " & Q & "user" & Q & ", "
-    sJsonBody = sJsonBody & Q & "content" & Q & ": [{" & Q & "type" & Q & ": " & Q & "text" & Q & ", "
-    sJsonBody = sJsonBody & Q & "text" & Q & ": " & Q & "Describe this clothing item in Spanish for a product catalog. Include: type of garment, color, material if visible, style (casual/formal), and any notable details like patterns or design elements. Keep it between 20-40 words." & Q & "}, "
-    sJsonBody = sJsonBody & "{" & Q & "type" & Q & ": " & Q & "image_url" & Q & ", "
-    sJsonBody = sJsonBody & Q & "image_url" & Q & ": {" & Q & "url" & Q & ": " & Q & sURL & Q & "}}]}], "
-    sJsonBody = sJsonBody & Q & "max_tokens" & Q & ": 150}"
+    REM Construir JSON para la API - FIXED JSON STRUCTURE
+    sJsonBody = "{" & Q & "model" & Q & ":" & Q & "gpt-4o-mini" & Q & ","
+    sJsonBody = sJsonBody & Q & "messages" & Q & ":[{"
+    sJsonBody = sJsonBody & Q & "role" & Q & ":" & Q & "user" & Q & ","
+    sJsonBody = sJsonBody & Q & "content" & Q & ":["
+    sJsonBody = sJsonBody & "{"
+    sJsonBody = sJsonBody & Q & "type" & Q & ":" & Q & "text" & Q & ","
+    sJsonBody = sJsonBody & Q & "text" & Q & ":" & Q & "Describe this clothing item in Spanish for a product catalog. Include: type of garment, color, material if visible, style (casual/formal), and any notable details like patterns or design elements. Keep it between 20-40 words." & Q
+    sJsonBody = sJsonBody & "},"
+    sJsonBody = sJsonBody & "{"
+    sJsonBody = sJsonBody & Q & "type" & Q & ":" & Q & "image_url" & Q & ","
+    sJsonBody = sJsonBody & Q & "image_url" & Q & ":{"
+    sJsonBody = sJsonBody & Q & "url" & Q & ":" & Q & sURL & Q
+    sJsonBody = sJsonBody & "}"
+    sJsonBody = sJsonBody & "}"
+    sJsonBody = sJsonBody & "]"
+    sJsonBody = sJsonBody & "}],"
+    sJsonBody = sJsonBody & Q & "max_tokens" & Q & ":150}"
     
     REM Reintentar hasta 3 veces
     nIntentos = 0
@@ -392,10 +402,12 @@ Function GenerarKeywords(sDescripcion)
     Dim sDescripcionEscapada
     sDescripcionEscapada = Replace(sDescripcion, Chr(34), "\\" & Chr(34))
     
-    sJsonBody = "{" & Q & "model" & Q & ": " & Q & "gpt-4o-mini" & Q & ", "
-    sJsonBody = sJsonBody & Q & "messages" & Q & ": [{" & Q & "role" & Q & ": " & Q & "user" & Q & ", "
-    sJsonBody = sJsonBody & Q & "content" & Q & ": " & Q & "Extract 5-7 key keywords from this product description in Spanish: " & sDescripcionEscapada & ". Return only comma-separated keywords." & Q & "}], "
-    sJsonBody = sJsonBody & Q & "max_tokens" & Q & ": 50}"
+    sJsonBody = "{" & Q & "model" & Q & ":" & Q & "gpt-4o-mini" & Q & ","
+    sJsonBody = sJsonBody & Q & "messages" & Q & ":[{"
+    sJsonBody = sJsonBody & Q & "role" & Q & ":" & Q & "user" & Q & ","
+    sJsonBody = sJsonBody & Q & "content" & Q & ":" & Q & "Extract 5-7 key keywords from this product description in Spanish: " & sDescripcionEscapada & ". Return only comma-separated keywords." & Q
+    sJsonBody = sJsonBody & "}],"
+    sJsonBody = sJsonBody & Q & "max_tokens" & Q & ":50}"
     
     On Error Resume Next
     
@@ -481,11 +493,11 @@ Function GenerarImagenesProducto(sImageURL, sDescripcion, nFila)
     sLogFile = sTempDir & "/dalle_debug_" & nFila & ".log"
     
     REM Crear JSON simple y limpio (sin caracteres especiales)
-    sJsonBody = "{" & Q & "model" & Q & ": " & Q & "dall-e-3" & Q & ", "
-    sJsonBody = sJsonBody & Q & "prompt" & Q & ": " & Q & "Professional product photo of clothing item" & Q & ", "
-    sJsonBody = sJsonBody & Q & "n" & Q & ": 1, "
-    sJsonBody = sJsonBody & Q & "size" & Q & ": " & Q & "1024x1024" & Q & ", "
-    sJsonBody = sJsonBody & Q & "quality" & Q & ": " & Q & "standard" & Q & "}"
+    sJsonBody = "{" & Q & "model" & Q & ":" & Q & "dall-e-3" & Q & ","
+    sJsonBody = sJsonBody & Q & "prompt" & Q & ":" & Q & "Professional product photo of clothing item" & Q & ","
+    sJsonBody = sJsonBody & Q & "n" & Q & ":1,"
+    sJsonBody = sJsonBody & Q & "size" & Q & ":" & Q & "1024x1024" & Q & ","
+    sJsonBody = sJsonBody & Q & "quality" & Q & ":" & Q & "standard" & Q & "}"
     
     On Error Resume Next
     
