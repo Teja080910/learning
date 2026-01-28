@@ -101,9 +101,16 @@ REM ============================================================
                         Else
                             REM Insertar imagen directamente desde la URL de DALL-E
                             oSheet.getCellByPosition(4, nFila - 1).setString("Inserting image...")
-                            InsertarImagenDesdeURL(oDoc, oSheet, sImagenURL, nFila)
-                            oSheet.getCellByPosition(4, nFila - 1).setString("Image saved")
                             oSheet.getCellByPosition(5, nFila - 1).setString(sImagenURL)
+                            
+                            Dim bInsertOK
+                            bInsertOK = InsertarImagenDesdeURL(oDoc, oSheet, sImagenURL, nFila)
+                            
+                            If bInsertOK Then
+                                oSheet.getCellByPosition(4, nFila - 1).setString("Image saved")
+                            Else
+                                oSheet.getCellByPosition(4, nFila - 1).setString("URL saved (img pending)")
+                            End If
                         End If
                         Err.Clear
                         On Error GoTo 0
@@ -1531,26 +1538,31 @@ Sub ProcesarImagenesSinColor()
 End Sub
 
 REM Inserta una imagen directamente desde una URL en la hoja de calculo en la columna G
-Sub InsertarImagenDesdeURL(oDoc, oSheet, sImageURL, nFila)
+Function InsertarImagenDesdeURL(oDoc, oSheet, sImageURL, nFila) As Boolean
     Dim oDrawPage
     Dim oGraphicProvider
     Dim oImage
     Dim oGraphics
     Dim aGraphicArgs()
+    Dim bSuccess
+    
+    bSuccess = False
     
     On Error Resume Next
     
     REM Obtener DrawPage del sheet
     oDrawPage = oSheet.getDrawPage()
     If isNull(oDrawPage) Then
-        Exit Sub
+        InsertarImagenDesdeURL = False
+        Exit Function
     End If
     
     REM Crear proveedor de graficos
     oGraphicProvider = CreateUnoService("com.sun.star.graphic.GraphicProvider")
     
     If isNull(oGraphicProvider) Then
-        Exit Sub
+        InsertarImagenDesdeURL = False
+        Exit Function
     End If
     
     REM Cargar imagen directamente desde URL
@@ -1562,7 +1574,8 @@ Sub InsertarImagenDesdeURL(oDoc, oSheet, sImageURL, nFila)
     oGraphics = oGraphicProvider.queryGraphic(aGraphicArgs())
     
     If isNull(oGraphics) Then
-        Exit Sub
+        InsertarImagenDesdeURL = False
+        Exit Function
     End If
     
     REM Crear imagen
@@ -1589,10 +1602,12 @@ Sub InsertarImagenDesdeURL(oDoc, oSheet, sImageURL, nFila)
         
         REM Agregar imagen al DrawPage
         oDrawPage.add(oImage)
+        bSuccess = True
     End If
     
     On Error GoTo 0
-End Sub
+    InsertarImagenDesdeURL = bSuccess
+End Function
 
 REM Genera una imagen con DALL-E y retorna directamente la URL (sin descargar localmente)
 Function GenerarImagenDALLEDirecto(sDescripcion)
