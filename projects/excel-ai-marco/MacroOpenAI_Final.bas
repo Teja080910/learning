@@ -98,29 +98,16 @@ REM ============================================================
                         nErrorAfterDalle = Err.Number
                         Err.Clear
                         
-                        REM DEBUG: Log what was returned
-                        On Error Resume Next
-                        Dim nDebugFile
-                        nDebugFile = FreeFile()
-                        Open Environ("TEMP") & "\macro_debug.log" For Append As #nDebugFile
-                        Print #nDebugFile, "Row " & nFila & " - After GenerarImagenesProducto:"
-                        Print #nDebugFile, "  sImagenes length: " & Len(sImagenes)
-                        Print #nDebugFile, "  sImagenes first 100 chars: " & Left(sImagenes, 100)
-                        Print #nDebugFile, "  Contains [Error]: " & (InStr(sImagenes, "[Error]") > 0)
-                        Close #nDebugFile
-                        Err.Clear
-                        On Error GoTo 0
-                        
                         If nErrorAfterDalle <> 0 Then
                             oSheet.getCellByPosition(4, nFila - 1).setString("Error en imagenes")
                             oSheet.getCellByPosition(5, nFila - 1).setString("")
                         Else
-                            REM Si sImagenes contiene datos (no es error), guardar en columna F
-                            If Left(sImagenes, 7) <> "[Error]" And Len(Trim(sImagenes)) > 5 Then
+                            REM Si sImagenes es una URL (contiene http), guardarla en columna F
+                            If InStr(sImagenes, "http") > 0 Then
                                 oSheet.getCellByPosition(4, nFila - 1).setString("Image generated")
                                 oSheet.getCellByPosition(5, nFila - 1).setString(sImagenes)
                             Else
-                                oSheet.getCellByPosition(4, nFila - 1).setString("Error generating")
+                                oSheet.getCellByPosition(4, nFila - 1).setString(sImagenes)
                                 oSheet.getCellByPosition(5, nFila - 1).setString("")
                             End If
                         End If
@@ -623,143 +610,74 @@ REM ============================================================
     End Sub
 
         REM Genera imagenes del producto en diferentes contextos usando DALL-E
-        REM Genera imagenes del producto usando DALL-E 3 (SIMPLIFICADO - IGUAL A UBUNTU)
         Function GenerarImagenesProducto(sImageURL, sDescripcion, nFila)
-            Dim sTempDir
-            Dim sBatchFile
-            Dim sResponseFile
-            Dim sJsonFile
+            Dim aImagenes(5) As String
+            Dim aContextos(2) As String
+            Dim aVistas(1) As String
+            Dim i, j, idx
+            Dim sPrompt
+            Dim sImagenURL
+            Dim sArchivoLocal
+            Dim sNombreBase
+            Dim sArticuloRef
+            Dim sCarpetaDestino
             Dim sComando
-            Dim sRespuesta
-            Dim sResultado
-            Dim sGeneratedImageUrl
-            Dim nFile
             Dim Q
-            Dim sApiKey
-            Dim sJsonBody
-            Dim nUrlStart, nUrlEnd
-            Dim sSearchStr
-            Dim sLinea
             
             Q = Chr(34)
             
-            sApiKey = "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"
+            REM Definir carpeta de destino
+            sCarpetaDestino = "D:\macro_images"
             
-            sTempDir = Environ("TEMP")
-            sJsonFile = sTempDir & "\dalle_request_" & nFila & ".json"
-            sResponseFile = sTempDir & "\dalle_response_" & nFila & ".txt"
-            sBatchFile = sTempDir & "\dalle_call_" & nFila & ".bat"
-            sResultado = "Error generating image"
-            sRespuesta = ""
-            sGeneratedImageUrl = ""
+            REM Crear carpeta si no existe
+            sComando = "if not exist " & Q & sCarpetaDestino & Q & " mkdir " & Q & sCarpetaDestino & Q
+            Shell("cmd /c " & sComando, 0, True)
+            Wait(500)
             
-            On Error Resume Next
+            REM Definir contextos y vistas
+            aContextos(0) = "urban city street background"
+            aContextos(1) = "beach seaside background"
+            aContextos(2) = "mountain rural countryside background"
             
-            REM Crear JSON sin espacios
-            sJsonBody = "{" & Q & "model" & Q & ":" & Q & "dall-e-3" & Q & ","
-            sJsonBody = sJsonBody & Q & "prompt" & Q & ":" & Q & "Professional product photo of clothing item" & Q & ","
-            sJsonBody = sJsonBody & Q & "n" & Q & ":1,"
-            sJsonBody = sJsonBody & Q & "size" & Q & ":" & Q & "1024x1024" & Q & ","
-            sJsonBody = sJsonBody & Q & "quality" & Q & ":" & Q & "standard" & Q & "}"
+            aVistas(0) = "front view"
+            aVistas(1) = "side profile view"
             
-            REM Escribir JSON file
-            nFile = FreeFile()
-            Open sJsonFile For Output As #nFile
-            Print #nFile, sJsonBody
-            Close #nFile
-            
-            REM Crear script batch simple que usa curl con timeout
-            sComando = "@echo off" & Chr(13) & Chr(10)
-            sComando = sComando & "setlocal enabledelayedexpansion" & Chr(13) & Chr(10)
-            sComando = sComando & "set APIKEY=" & sApiKey & Chr(13) & Chr(10)
-            sComando = sComando & "set JSONFILE=" & sJsonFile & Chr(13) & Chr(10)
-            sComando = sComando & "set RESPFILE=" & sResponseFile & Chr(13) & Chr(10)
-            sComando = sComando & "timeout /t 1 /nobreak > nul 2>&1" & Chr(13) & Chr(10)
-            sComando = sComando & "curl.exe -s --max-time 30 -X POST " & Q & "https://api.openai.com/v1/images/generations" & Q & " "
-            sComando = sComando & "-H " & Q & "Content-Type: application/json" & Q & " "
-            sComando = sComando & "-H " & Q & "Authorization: Bearer !APIKEY!" & Q & " "
-            sComando = sComando & "--data-binary " & Q & "@!JSONFILE!" & Q & " "
-            sComando = sComando & "> " & Q & "!RESPFILE!" & Q & " 2>&1" & Chr(13) & Chr(10)
-            
-            nFile = FreeFile()
-            Open sBatchFile For Output As #nFile
-            Print #nFile, sComando
-            Close #nFile
-            
-            REM Ejecutar batch file con timeout short
-            Shell("cmd.exe /c " & Q & sBatchFile & Q, 0, False)
-            Wait(35000)
-            
-            REM Leer respuesta
-            On Error Resume Next
-            nFile = FreeFile()
-            Open sResponseFile For Input As #nFile
-            If Err.Number = 0 Then
-                While Not EOF(nFile)
-                    Line Input #nFile, sLinea
-                    sRespuesta = sRespuesta & sLinea & Chr(10)
-                Wend
-                Close #nFile
+            REM Extraer referencia de articulo de la URL
+            sArticuloRef = ExtraerArticuloRef(sImageURL)
+            If Len(Trim(sArticuloRef)) = 0 Then
+                sArticuloRef = "articulo_" & nFila
             End If
-            Err.Clear
-            On Error GoTo 0
             
-            REM Extraer URL de imagen
-            If Len(Trim(sRespuesta)) > 0 Then
-                sSearchStr = Q & "url" & Q & ":"
-                nUrlStart = InStr(sRespuesta, sSearchStr)
-                
-                If nUrlStart > 0 Then
-                    nUrlStart = nUrlStart + Len(sSearchStr)
-                    REM Saltar espacios y comillas
-                    While nUrlStart <= Len(sRespuesta) And (Mid(sRespuesta, nUrlStart, 1) = " " Or Mid(sRespuesta, nUrlStart, 1) = Q)
-                        nUrlStart = nUrlStart + 1
-                    Wend
+            REM Nombre base para archivos
+            sNombreBase = sArticuloRef & "_"
+            
+            REM Generar 6 imagenes (3 contextos x 2 vistas)
+            idx = 1
+            For i = 0 To 2
+                For j = 0 To 1
+                    sPrompt = "Professional e-commerce product photography: " & sDescripcion & " displayed on a fashion model in a tasteful, professional manner, " & aVistas(j) & ", " & aContextos(i) & ", natural daylight, high quality, clean and professional style, suitable for online retail catalog"
+                    sImagenURL = GenerarImagenDALLE(sPrompt)
                     
-                    nUrlEnd = InStr(nUrlStart, sRespuesta, Q)
-                    
-                    If nUrlEnd > nUrlStart Then
-                        sGeneratedImageUrl = Mid(sRespuesta, nUrlStart, nUrlEnd - nUrlStart)
-                        
-                        If Len(Trim(sGeneratedImageUrl)) > 20 And InStr(sGeneratedImageUrl, "http") > 0 Then
-                            sResultado = sGeneratedImageUrl
-                        End If
+                    REM Descargar imagen a carpeta local
+                    If Left(sImagenURL, 5) <> "Error" And Len(Trim(sImagenURL)) > 0 Then
+                        sArchivoLocal = DescargarImagenLocal(sImagenURL, sCarpetaDestino, sNombreBase & idx)
+                        aImagenes(idx - 1) = sArchivoLocal
+                    Else
+                        aImagenes(idx - 1) = "[Error]"
                     End If
-                End If
+                    
+                    idx = idx + 1
+                    Wait(2000)
+                Next j
+            Next i
+            
+            REM Retornar array de rutas locales separadas por pipe
+            REM También retornar la primera URL DALL-E para column F
+            If Len(Trim(aImagenes(0))) > 0 And Left(aImagenes(0), 7) <> "[Error]" Then
+                GenerarImagenesProducto = aImagenes(0) & "|" & aImagenes(1) & "|" & aImagenes(2) & "|" & aImagenes(3) & "|" & aImagenes(4) & "|" & aImagenes(5)
+            Else
+                GenerarImagenesProducto = "[Error]"
             End If
-            
-            REM Escribir debug log
-            On Error Resume Next
-            Dim sDebugFile
-            sDebugFile = Environ("TEMP") & "\dalle_debug_" & nFila & ".txt"
-            Dim nDebugFile
-            nDebugFile = FreeFile()
-            Open sDebugFile For Output As #nDebugFile
-            Print #nDebugFile, "=== DALL-E DEBUG LOG (Windows) ==="
-            Print #nDebugFile, "Row: " & nFila
-            Print #nDebugFile, "JSON Request:"
-            Print #nDebugFile, sJsonBody
-            Print #nDebugFile, ""
-            Print #nDebugFile, "API Response (first 500 chars):"
-            Print #nDebugFile, Left(sRespuesta, 500)
-            Print #nDebugFile, ""
-            Print #nDebugFile, "Response Length: " & Len(sRespuesta)
-            Print #nDebugFile, ""
-            Print #nDebugFile, "Extracted URL:"
-            Print #nDebugFile, sResultado
-            Close #nDebugFile
-            Err.Clear
-            On Error GoTo 0
-            
-            REM Limpiar archivos temporales
-            On Error Resume Next
-            Kill sJsonFile
-            Kill sResponseFile
-            Kill sBatchFile
-            Err.Clear
-            On Error GoTo 0
-            
-            GenerarImagenesProducto = sResultado
         End Function
 
         REM Llama a DALL-E para generar una imagen
@@ -772,7 +690,6 @@ REM ============================================================
             Dim nFile
             Dim Q
             Dim sApiKey
-            sApiKey = "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"
             Dim sJsonData
             Dim sResultado
             Dim sPromptLimpio
@@ -798,11 +715,11 @@ REM ============================================================
             sPromptLimpio = Replace(sPromptLimpio, "ú", "u")
             sPromptLimpio = Replace(sPromptLimpio, "ñ", "n")
             
-            REM Construir JSON para DALL-E (SIN espacios, SIN backslashes)
-            sJsonData = "{" & Q & "model" & Q & ":" & Q & "dall-e-3" & Q & ","
-            sJsonData = sJsonData & Q & "prompt" & Q & ":" & Q & sPromptLimpio & Q & ","
-            sJsonData = sJsonData & Q & "n" & Q & ":1,"
-            sJsonData = sJsonData & Q & "size" & Q & ":" & Q & "1024x1024" & Q & "}"
+            REM Construir JSON para DALL-E
+            sJsonData = "{\" & Q & "model\" & Q & ": \" & Q & "dall-e-3\" & Q & ", "
+            sJsonData = sJsonData & "\" & Q & "prompt\" & Q & ": \" & Q & sPromptLimpio & "\" & Q & ", "
+            sJsonData = sJsonData & "\" & Q & "n\" & Q & ": 1, "
+            sJsonData = sJsonData & "\" & Q & "size\" & Q & ": \" & Q & "1024x1024\" & Q & "}"
             
             On Error Resume Next
             
@@ -945,7 +862,7 @@ REM ============================================================
             
             REM API Key de ImgBB (publica, sin expiracion)
             REM Puedes obtener tu propia key gratis en: https://api.imgbb.com/
-            sApiKey = "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"
+            sApiKey = "4614f584226d3704421a2b5120baecad"
             
             REM Archivos temporales
             sTempDir = Environ("TEMP")
