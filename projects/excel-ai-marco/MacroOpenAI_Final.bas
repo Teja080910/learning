@@ -637,6 +637,9 @@ REM ============================================================
             Dim Q
             Dim sApiKey
             Dim sJsonBody
+            Dim nUrlStart, nUrlEnd
+            Dim sSearchStr
+            Dim sLinea
             
             Q = Chr(34)
             
@@ -646,82 +649,106 @@ REM ============================================================
             sJsonFile = sTempDir & "\dalle_request_" & nFila & ".json"
             sResponseFile = sTempDir & "\dalle_response_" & nFila & ".txt"
             sBatchFile = sTempDir & "\dalle_call_" & nFila & ".bat"
+            sResultado = "Error generating image"
+            sRespuesta = ""
+            sGeneratedImageUrl = ""
             
-            REM Crear JSON simple (sin espacios alrededor de colones)
+            On Error Resume Next
+            
+            REM Crear JSON sin espacios
             sJsonBody = "{" & Q & "model" & Q & ":" & Q & "dall-e-3" & Q & ","
             sJsonBody = sJsonBody & Q & "prompt" & Q & ":" & Q & "Professional product photo of clothing item" & Q & ","
             sJsonBody = sJsonBody & Q & "n" & Q & ":1,"
             sJsonBody = sJsonBody & Q & "size" & Q & ":" & Q & "1024x1024" & Q & ","
             sJsonBody = sJsonBody & Q & "quality" & Q & ":" & Q & "standard" & Q & "}"
             
-            On Error Resume Next
-            
-            REM Escribir JSON
+            REM Escribir JSON file
             nFile = FreeFile()
             Open sJsonFile For Output As #nFile
             Print #nFile, sJsonBody
             Close #nFile
             
-            REM Crear script batch para Windows
+            REM Crear script batch simple que usa curl con timeout
             sComando = "@echo off" & Chr(13) & Chr(10)
-            sComando = sComando & "chcp 65001 > nul" & Chr(13) & Chr(10)
-            sComando = sComando & "curl -s -X POST " & Q & "https://api.openai.com/v1/images/generations" & Q & " "
+            sComando = sComando & "setlocal enabledelayedexpansion" & Chr(13) & Chr(10)
+            sComando = sComando & "set APIKEY=" & sApiKey & Chr(13) & Chr(10)
+            sComando = sComando & "set JSONFILE=" & sJsonFile & Chr(13) & Chr(10)
+            sComando = sComando & "set RESPFILE=" & sResponseFile & Chr(13) & Chr(10)
+            sComando = sComando & "timeout /t 1 /nobreak > nul 2>&1" & Chr(13) & Chr(10)
+            sComando = sComando & "curl.exe -s --max-time 30 -X POST " & Q & "https://api.openai.com/v1/images/generations" & Q & " "
             sComando = sComando & "-H " & Q & "Content-Type: application/json" & Q & " "
-            sComando = sComando & "-H " & Q & "Authorization: Bearer " & sApiKey & Q & " "
-            sComando = sComando & "-d @" & Q & sJsonFile & Q & " "
-            sComando = sComando & "> " & Q & sResponseFile & Q & " 2>&1" & Chr(13) & Chr(10)
+            sComando = sComando & "-H " & Q & "Authorization: Bearer !APIKEY!" & Q & " "
+            sComando = sComando & "--data-binary " & Q & "@!JSONFILE!" & Q & " "
+            sComando = sComando & "> " & Q & "!RESPFILE!" & Q & " 2>&1" & Chr(13) & Chr(10)
             
             nFile = FreeFile()
             Open sBatchFile For Output As #nFile
             Print #nFile, sComando
             Close #nFile
             
-            Shell(sBatchFile, 0, True)
-            Wait(25000)
+            REM Ejecutar batch file con timeout short
+            Shell("cmd.exe /c " & Q & sBatchFile & Q, 0, False)
+            Wait(35000)
             
             REM Leer respuesta
-            sRespuesta = ""
             On Error Resume Next
             nFile = FreeFile()
             Open sResponseFile For Input As #nFile
             If Err.Number = 0 Then
                 While Not EOF(nFile)
-                    Dim sLinea
                     Line Input #nFile, sLinea
                     sRespuesta = sRespuesta & sLinea & Chr(10)
                 Wend
                 Close #nFile
-            Else
-                sRespuesta = ""
-                Err.Clear
             End If
+            Err.Clear
             On Error GoTo 0
             
             REM Extraer URL de imagen
-            sResultado = "Error generating image"
-            Dim nUrlStart, nUrlEnd
-            Dim sSearchStr
-            
-            On Error Resume Next
-            
             If Len(Trim(sRespuesta)) > 0 Then
-                sSearchStr = Q & "url" & Q & ": " & Q
+                sSearchStr = Q & "url" & Q & ":"
                 nUrlStart = InStr(sRespuesta, sSearchStr)
                 
                 If nUrlStart > 0 Then
                     nUrlStart = nUrlStart + Len(sSearchStr)
+                    REM Saltar espacios y comillas
+                    While nUrlStart <= Len(sRespuesta) And (Mid(sRespuesta, nUrlStart, 1) = " " Or Mid(sRespuesta, nUrlStart, 1) = Q)
+                        nUrlStart = nUrlStart + 1
+                    Wend
+                    
                     nUrlEnd = InStr(nUrlStart, sRespuesta, Q)
                     
                     If nUrlEnd > nUrlStart Then
                         sGeneratedImageUrl = Mid(sRespuesta, nUrlStart, nUrlEnd - nUrlStart)
                         
-                        If Len(Trim(sGeneratedImageUrl)) > 20 Then
+                        If Len(Trim(sGeneratedImageUrl)) > 20 And InStr(sGeneratedImageUrl, "http") > 0 Then
                             sResultado = sGeneratedImageUrl
                         End If
                     End If
                 End If
             End If
             
+            REM Escribir debug log
+            On Error Resume Next
+            Dim sDebugFile
+            sDebugFile = Environ("TEMP") & "\dalle_debug_" & nFila & ".txt"
+            Dim nDebugFile
+            nDebugFile = FreeFile()
+            Open sDebugFile For Output As #nDebugFile
+            Print #nDebugFile, "=== DALL-E DEBUG LOG (Windows) ==="
+            Print #nDebugFile, "Row: " & nFila
+            Print #nDebugFile, "JSON Request:"
+            Print #nDebugFile, sJsonBody
+            Print #nDebugFile, ""
+            Print #nDebugFile, "API Response (first 500 chars):"
+            Print #nDebugFile, Left(sRespuesta, 500)
+            Print #nDebugFile, ""
+            Print #nDebugFile, "Response Length: " & Len(sRespuesta)
+            Print #nDebugFile, ""
+            Print #nDebugFile, "Extracted URL:"
+            Print #nDebugFile, sResultado
+            Close #nDebugFile
+            Err.Clear
             On Error GoTo 0
             
             REM Limpiar archivos temporales
@@ -745,6 +772,7 @@ REM ============================================================
             Dim nFile
             Dim Q
             Dim sApiKey
+            sApiKey = "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"
             Dim sJsonData
             Dim sResultado
             Dim sPromptLimpio
@@ -917,7 +945,7 @@ REM ============================================================
             
             REM API Key de ImgBB (publica, sin expiracion)
             REM Puedes obtener tu propia key gratis en: https://api.imgbb.com/
-            sApiKey = "4614f584226d3704421a2b5120baecad"
+            sApiKey = "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"
             
             REM Archivos temporales
             sTempDir = Environ("TEMP")
