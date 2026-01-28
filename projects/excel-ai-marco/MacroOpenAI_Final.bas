@@ -59,7 +59,12 @@ REM ============================================================
                     
                     sDescripcion = LlamarOpenAI(sImageURL)
                     
-                    REM Escribir descripcion primero
+                    REM Eliminar colores de la descripcion
+                    If Left(sDescripcion, 5) <> "Error" Then
+                        sDescripcion = EliminarColores(sDescripcion)
+                    End If
+                    
+                    REM Escribir descripcion sin colores
                     oSheet.getCellByPosition(1, nFila - 1).setString(sDescripcion)
                     
                     REM Registrar resultado y generar keywords
@@ -79,6 +84,20 @@ REM ============================================================
                             sKeywords = "[Vacio]"
                         End If
                         oSheet.getCellByPosition(3, nFila - 1).setString(sKeywords)
+                        
+                        REM Generar imagenes del producto
+                        oSheet.getCellByPosition(4, nFila - 1).setString("Generando imagenes...")
+                        Wait(2000)
+                        On Error Resume Next
+                        Dim sImagenes
+                        sImagenes = GenerarImagenesProducto(sImageURL, sDescripcion, nFila)
+                        If Err.Number <> 0 Then
+                            oSheet.getCellByPosition(4, nFila - 1).setString("Error en imagenes - instalar curl")
+                            Err.Clear
+                        Else
+                            oSheet.getCellByPosition(4, nFila - 1).setString(sImagenes)
+                        End If
+                        On Error GoTo 0
                     End If
                     nFila = nFila + 1
                     
@@ -114,7 +133,7 @@ REM ============================================================
             Q = Chr(34)
             
             REM CONFIGURACION: Reemplazar con tu API key de OpenAI
-            sApiKey = "api-key"
+            sApiKey = "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"
             
             REM Archivos temporales
             sTempDir = Environ("TEMP")
@@ -241,6 +260,37 @@ REM ============================================================
                 ExtraerDescripcionOpenAI = sTexto
             Else
                 ExtraerDescripcionOpenAI = "Error extraccion"
+            End If
+        End Function
+
+        REM Extrae la referencia de articulo de la URL
+        REM Ejemplo: F_15115847_M_2406915_Detail.jpg -> F_15115847
+        Function ExtraerArticuloRef(sURL)
+            Dim nPos
+            Dim sNombre
+            Dim sRef
+            
+            REM Obtener nombre del archivo de la URL
+            nPos = InStrRev(sURL, "/")
+            If nPos > 0 Then
+                sNombre = Mid(sURL, nPos + 1)
+            Else
+                sNombre = sURL
+            End If
+            
+            REM Extraer la referencia (primera parte antes del primer guion bajo despues de F_)
+            nPos = InStr(sNombre, "_")
+            If nPos > 0 Then
+                sRef = Left(sNombre, nPos - 1)
+                nPos = InStr(nPos + 1, sNombre, "_")
+                If nPos > 0 Then
+                    sRef = sRef & "_" & Mid(sNombre, nPos + 1, InStr(nPos + 1, sNombre, "_") - nPos - 1)
+                    ExtraerArticuloRef = sRef
+                Else
+                    ExtraerArticuloRef = sRef
+                End If
+            Else
+                ExtraerArticuloRef = ""
             End If
         End Function
 
@@ -385,7 +435,7 @@ REM ============================================================
             Q = Chr(34)
             
             REM Usar la misma API key
-            sApiKey = "api-key"
+            sApiKey = "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"
             
             REM Archivos temporales
             sTempDir = Environ("TEMP")
@@ -554,6 +604,7 @@ REM ============================================================
             Dim sImagenURL
             Dim sArchivoLocal
             Dim sNombreBase
+            Dim sArticuloRef
             Dim sCarpetaDestino
             Dim sComando
             Dim Q
@@ -576,11 +627,17 @@ REM ============================================================
             aVistas(0) = "front view"
             aVistas(1) = "side profile view"
             
+            REM Extraer referencia de articulo de la URL
+            sArticuloRef = ExtraerArticuloRef(sImageURL)
+            If Len(Trim(sArticuloRef)) = 0 Then
+                sArticuloRef = "articulo_" & nFila
+            End If
+            
             REM Nombre base para archivos
-            sNombreBase = "producto_" & nFila & "_"
+            sNombreBase = sArticuloRef & "_"
             
             REM Generar 6 imagenes (3 contextos x 2 vistas)
-            idx = 0
+            idx = 1
             For i = 0 To 2
                 For j = 0 To 1
                     sPrompt = "Professional e-commerce product photography: " & sDescripcion & " displayed on a fashion model in a tasteful, professional manner, " & aVistas(j) & ", " & aContextos(i) & ", natural daylight, high quality, clean and professional style, suitable for online retail catalog"
@@ -589,9 +646,9 @@ REM ============================================================
                     REM Descargar imagen a carpeta local
                     If Left(sImagenURL, 5) <> "Error" And Len(Trim(sImagenURL)) > 0 Then
                         sArchivoLocal = DescargarImagenLocal(sImagenURL, sCarpetaDestino, sNombreBase & idx)
-                        aImagenes(idx) = sArchivoLocal
+                        aImagenes(idx - 1) = sArchivoLocal
                     Else
-                        aImagenes(idx) = "[Error]"
+                        aImagenes(idx - 1) = "[Error]"
                     End If
                     
                     idx = idx + 1
@@ -620,7 +677,7 @@ REM ============================================================
             Q = Chr(34)
             
             REM Usar la misma API key
-            sApiKey = "api-key"
+            sApiKey = "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"
             
             REM Archivos temporales
             sTempDir = Environ("TEMP")
@@ -854,18 +911,18 @@ REM ============================================================
             Close #nFile
             
             REM Verificar si hay error
-            If InStr(sJSON, Chr(34) & "error" & Chr(34)) > 0 Then
+            If InStr(sJSON, "error") > 0 Then
                 ExtraerURLImgBB = "[Error upload]"
                 Exit Function
             End If
             
             REM Buscar "display_url" que es la URL directa de la imagen
-            nPos = InStr(sJSON, Chr(34) & "display_url" & Chr(34))
+            nPos = InStr(sJSON, "display_url")
             If nPos = 0 Then
                 REM Si no hay display_url, buscar "url" dentro de "data"
-                nPos = InStr(sJSON, Chr(34) & "data" & Chr(34))
+                nPos = InStr(sJSON, "data")
                 If nPos > 0 Then
-                    nPos = InStr(nPos, sJSON, Chr(34) & "url" & Chr(34))
+                    nPos = InStr(nPos, sJSON, "url")
                 End If
                 
                 If nPos = 0 Then
@@ -1073,7 +1130,6 @@ Sub ProbarGenerarImagen()
     Dim sImagenURL
     Dim sArchivoLocal
     Dim sCarpeta
-    Dim oShell
     
     sCarpeta = "D:\macro_images"
     sDescripcion = "Pantalones beige casuales"
@@ -1088,11 +1144,7 @@ Sub ProbarGenerarImagen()
     If Left(sImagenURL, 5) <> "Error" And Len(Trim(sImagenURL)) > 0 Then
         MsgBox "Descargando imagen a: " & sCarpeta
         sArchivoLocal = DescargarImagenLocal(sImagenURL, sCarpeta, "test_imagen")
-        MsgBox "Imagen guardada en: " & Chr(10) & sArchivoLocal & Chr(10) & Chr(10) & "Abriendo carpeta..."
-        
-        REM Abrir la carpeta para verificar
-        Set oShell = CreateObject("WScript.Shell")
-        oShell.Run "explorer.exe " & sCarpeta, 1, False
+        MsgBox "Imagen guardada en: " & Chr(10) & sArchivoLocal & Chr(10) & Chr(10) & "Carpeta: " & sCarpeta
     Else
         MsgBox "Error generando imagen: " & sImagenURL
     End If
@@ -1115,3 +1167,419 @@ Sub VerificarArchivo()
     End If
 End Sub
 
+
+
+REM Elimina menciones de colores de una descripcion
+Function EliminarColores(sTexto)
+    Dim sResultado
+    Dim aColores
+    Dim i
+    
+    sResultado = sTexto
+    
+    REM Lista de colores en español (con variaciones)
+    aColores = Array( _
+        "negro", "negra", "negros", "negras", _
+        "blanco", "blanca", "blancos", "blancas", _
+        "rojo", "roja", "rojos", "rojas", _
+        "azul", "azules", _
+        "verde", "verdes", _
+        "amarillo", "amarilla", "amarillos", "amarillas", _
+        "naranja", "naranjas", _
+        "rosa", "rosas", _
+        "morado", "morada", "morados", "moradas", _
+        "violeta", "violetas", _
+        "gris", "grises", _
+        "marron", "marrón", "marrones", _
+        "beige", "beis", _
+        "crema", _
+        "dorado", "dorada", "dorados", "doradas", _
+        "plateado", "plateada", "plateados", "plateadas", _
+        "turquesa", _
+        "fucsia", _
+        "lila", _
+        "coral", _
+        "salmon", "salmón", _
+        "caqui", _
+        "oliva", _
+        "granate", _
+        "burdeos", "burdeo", _
+        "celeste", _
+        "indigo", "índigo", _
+        "magenta", _
+        "ocre", _
+        "purpura", "púrpura", _
+        "escarlata", _
+        "carmesi", "carmesí", _
+        "esmeralda", _
+        "jade", _
+        "lavanda", _
+        "mostaza", _
+        "terracota", _
+        "vino", _
+        "chocolate", _
+        "camel", _
+        "arena", _
+        "hueso", _
+        "marfil", _
+        "perla", _
+        "oscuro", "oscura", "oscuros", "oscuras", _
+        "claro", "clara", "claros", "claras", _
+        "color", "colores", _
+        "tono", "tonos", _
+        "tonalidad", "tonalidades" _
+    )
+    
+    REM Eliminar cada color (case insensitive)
+    For i = LBound(aColores) To UBound(aColores)
+        REM Eliminar color como palabra completa
+        sResultado = Replace(sResultado, " " & aColores(i) & " ", " ", 1, -1, 1)
+        sResultado = Replace(sResultado, " " & aColores(i) & ",", ",", 1, -1, 1)
+        sResultado = Replace(sResultado, " " & aColores(i) & ".", ".", 1, -1, 1)
+        
+        REM Eliminar al inicio de frase
+        If LCase(Left(sResultado, Len(aColores(i)) + 1)) = LCase(aColores(i) & " ") Then
+            sResultado = Mid(sResultado, Len(aColores(i)) + 2)
+        End If
+    Next i
+    
+    REM Limpiar espacios multiples
+    While InStr(sResultado, "  ") > 0
+        sResultado = Replace(sResultado, "  ", " ")
+    Wend
+    
+    REM Limpiar espacios antes de puntuacion
+    sResultado = Replace(sResultado, " ,", ",")
+    sResultado = Replace(sResultado, " .", ".")
+    
+    REM Trim espacios al inicio y final
+    sResultado = Trim(sResultado)
+    
+    EliminarColores = sResultado
+End Function
+
+
+REM Elimina colores de todas las descripciones en columna B
+Sub EliminarColoresDeDescripciones()
+    Dim oDoc
+    Dim oSheet
+    Dim nFila
+    Dim sDescripcion
+    Dim sDescripcionSinColor
+    Dim bContinuar
+    Dim nProcesadas
+    
+    oDoc = ThisComponent
+    oSheet = oDoc.Sheets(0)
+    
+    nFila = 2
+    bContinuar = True
+    nProcesadas = 0
+    
+    REM Contar descripciones
+    Dim nTotal
+    nTotal = 0
+    While Len(Trim(oSheet.getCellByPosition(1, nTotal + 1).getString())) > 0
+        nTotal = nTotal + 1
+    Wend
+    
+    If nTotal = 0 Then
+        MsgBox "No se encontraron descripciones en la columna B."
+        Exit Sub
+    End If
+    
+    MsgBox "Se eliminaran colores de " & nTotal & " descripciones." & Chr(10) & "Presione OK para comenzar."
+    
+    While bContinuar
+        sDescripcion = oSheet.getCellByPosition(1, nFila - 1).getString()
+        
+        If Len(Trim(sDescripcion)) = 0 Then
+            bContinuar = False
+        Else
+            REM Solo procesar si no hay error
+            If Left(sDescripcion, 5) <> "Error" Then
+                sDescripcionSinColor = EliminarColores(sDescripcion)
+                oSheet.getCellByPosition(1, nFila - 1).setString(sDescripcionSinColor)
+                nProcesadas = nProcesadas + 1
+            End If
+            
+            nFila = nFila + 1
+        End If
+    Wend
+    
+    MsgBox "Colores eliminados de " & nProcesadas & " descripciones."
+End Sub
+
+
+REM Prueba la eliminacion de colores
+Sub ProbarEliminarColores()
+    Dim sOriginal
+    Dim sSinColor
+    
+    sOriginal = "Pantalones beige con cintura elastica y cordon, ideales para comodidad y estilo."
+    sSinColor = EliminarColores(sOriginal)
+    
+    MsgBox "Original:" & Chr(10) & sOriginal & Chr(10) & Chr(10) & "Sin colores:" & Chr(10) & sSinColor
+    
+    sOriginal = "Camiseta roja de manga corta con cuello redondo, perfecta para verano."
+    sSinColor = EliminarColores(sOriginal)
+    
+    MsgBox "Original:" & Chr(10) & sOriginal & Chr(10) & Chr(10) & "Sin colores:" & Chr(10) & sSinColor
+End Sub
+
+
+REM Genera descripciones SIN mencionar colores
+Function LlamarOpenAISinColor(sURL)
+    Dim sTempDir
+    Dim sBatchFile
+    Dim sResponseFile
+    Dim sJsonFile
+    Dim sComando
+    Dim sRespuesta
+    Dim nFile
+    Dim Q
+    Dim sApiKey
+    Dim sJsonBody
+    Dim nIntentos
+    Dim sResultado
+    
+    Q = Chr(34)
+    
+    REM CONFIGURACION: Reemplazar con tu API key de OpenAI
+    sApiKey = "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"
+    
+    REM Archivos temporales
+    sTempDir = Environ("TEMP")
+    sBatchFile = sTempDir & "\openai_call_nocolor.bat"
+    sResponseFile = sTempDir & "\openai_response_nocolor.txt"
+    sJsonFile = sTempDir & "\openai_request_nocolor.json"
+    
+    REM Construir JSON para la API - SIN MENCIONAR COLORES
+    sJsonBody = "{" & Q & "model" & Q & ": " & Q & "gpt-4o-mini" & Q & ", "
+    sJsonBody = sJsonBody & Q & "messages" & Q & ": [{" & Q & "role" & Q & ": " & Q & "user" & Q & ", "
+    sJsonBody = sJsonBody & Q & "content" & Q & ": [{" & Q & "type" & Q & ": " & Q & "text" & Q & ", "
+    sJsonBody = sJsonBody & Q & "text" & Q & ": " & Q & "Describe this clothing item in Spanish for a product catalog. Include: type of garment, material if visible, style (casual/formal), and any notable details like patterns or design elements. DO NOT mention any colors. Keep it between 20-40 words." & Q & "}, "
+    sJsonBody = sJsonBody & "{" & Q & "type" & Q & ": " & Q & "image_url" & Q & ", "
+    sJsonBody = sJsonBody & Q & "image_url" & Q & ": {" & Q & "url" & Q & ": " & Q & sURL & Q & "}}]}], "
+    sJsonBody = sJsonBody & Q & "max_tokens" & Q & ": 150}"
+    
+    REM Reintentar hasta 3 veces
+    nIntentos = 0
+    sResultado = "Error: Sin respuesta"
+    
+    While nIntentos < 3
+        nIntentos = nIntentos + 1
+        
+        On Error Resume Next
+        
+        REM Escribir archivo JSON
+        nFile = FreeFile()
+        Open sJsonFile For Output As #nFile
+        Print #nFile, sJsonBody
+        Close #nFile
+        
+        REM Crear comando curl con codificacion UTF-8
+        sComando = "@echo off" & Chr(13) & Chr(10)
+        sComando = sComando & "chcp 65001 > nul" & Chr(13) & Chr(10)
+        sComando = sComando & "curl -s -X POST " & Q & "https://api.openai.com/v1/chat/completions" & Q & " "
+        sComando = sComando & "-H " & Q & "Content-Type: application/json; charset=utf-8" & Q & " "
+        sComando = sComando & "-H " & Q & "Authorization: Bearer " & sApiKey & Q & " "
+        sComando = sComando & "-d @" & Q & sJsonFile & Q & " "
+        sComando = sComando & "> " & Q & sResponseFile & Q & " 2>&1" & Chr(13) & Chr(10)
+        
+        REM Escribir y ejecutar batch
+        nFile = FreeFile()
+        Open sBatchFile For Output As #nFile
+        Print #nFile, sComando
+        Close #nFile
+        
+        Shell(sBatchFile, 0, True)
+        Wait(8000)
+        
+        REM Leer respuesta
+        sRespuesta = ""
+        nFile = FreeFile()
+        Open sResponseFile For Input As #nFile
+        While Not EOF(nFile)
+            Dim sLinea
+            Line Input #nFile, sLinea
+            sRespuesta = sRespuesta & sLinea & Chr(10)
+        Wend
+        Close #nFile
+        
+        On Error GoTo 0
+        
+        sResultado = ExtraerDescripcionOpenAI(sRespuesta)
+        
+        If Left(sResultado, 5) <> "Error" Then
+            nIntentos = 3
+        Else
+            If nIntentos < 3 Then
+                Wait(5000)
+            End If
+        End If
+    Wend
+    
+    REM Limpiar archivos temporales
+    On Error Resume Next
+    Kill sBatchFile
+    Kill sResponseFile
+    Kill sJsonFile
+    On Error GoTo 0
+    
+    LlamarOpenAISinColor = sResultado
+End Function
+
+
+REM Procesa URLs y genera descripciones SIN colores
+Sub ProcesarImagenesSinColor()
+    Dim oDoc
+    Dim oSheet
+    Dim nFila
+    Dim sImageURL
+    Dim sDescripcion
+    Dim sKeywords
+    Dim bContinuar
+    Dim nProcesadas
+    Dim nErrores
+    Dim nTotal
+    Dim nInicio
+    
+    oDoc = ThisComponent
+    oSheet = oDoc.Sheets(0)
+    
+    nFila = 2
+    bContinuar = True
+    nProcesadas = 0
+    nErrores = 0
+    nInicio = Timer
+    
+    REM Contar total de filas con URLs
+    nTotal = 0
+    While Len(Trim(oSheet.getCellByPosition(0, nTotal + 1).getString())) > 0
+        nTotal = nTotal + 1
+    Wend
+    
+    If nTotal = 0 Then
+        MsgBox "No se encontraron URLs en la columna A."
+        Exit Sub
+    End If
+    
+    MsgBox "Se procesaran " & nTotal & " imagenes SIN mencionar colores." & Chr(10) & "Presione OK para comenzar."
+    
+    REM Bucle principal de procesamiento
+    While bContinuar
+        sImageURL = oSheet.getCellByPosition(0, nFila - 1).getString()
+        
+        If Len(Trim(sImageURL)) = 0 Then
+            bContinuar = False
+        Else
+            oSheet.getCellByPosition(2, nFila - 1).setString("Procesando...")
+            
+            sDescripcion = LlamarOpenAISinColor(sImageURL)
+            
+            REM Escribir descripcion primero
+            oSheet.getCellByPosition(1, nFila - 1).setString(sDescripcion)
+            
+            REM Registrar resultado y generar keywords
+            If Left(sDescripcion, 5) = "Error" Then
+                nErrores = nErrores + 1
+                oSheet.getCellByPosition(2, nFila - 1).setString("ERROR")
+                oSheet.getCellByPosition(3, nFila - 1).setString("")
+            Else
+                nProcesadas = nProcesadas + 1
+                oSheet.getCellByPosition(2, nFila - 1).setString("OK")
+                
+                REM Generar keywords de la descripcion
+                oSheet.getCellByPosition(3, nFila - 1).setString("Generando keywords...")
+                Wait(1000)
+                sKeywords = GenerarKeywords(sDescripcion)
+                If Len(Trim(sKeywords)) = 0 Then
+                    sKeywords = "[Vacio]"
+                End If
+                oSheet.getCellByPosition(3, nFila - 1).setString(sKeywords)
+            End If
+        
+            nFila = nFila + 1
+            
+            REM Pausas para respetar limites de API
+            Wait(3000)
+            If (nProcesadas + nErrores) Mod 10 = 0 Then
+                Wait(2000)
+            End If
+        End If
+    Wend
+    
+    Dim nTiempo
+    nTiempo = Int((Timer - nInicio) / 60)
+    
+    MsgBox "COMPLETADO" & Chr(10) & "Procesadas: " & nProcesadas & Chr(10) & "Errores: " & nErrores & Chr(10) & "Tiempo: " & nTiempo & " min"
+End Sub
+
+REM Funcion para diagnosticar si curl esta instalado
+Sub DiagnosticarCurl()
+    Dim sTempDir
+    Dim sBatchFile
+    Dim sResponseFile
+    Dim sComando
+    Dim nFile
+    Dim sRespuesta
+    Dim sLinea
+    
+    sTempDir = Environ("TEMP")
+    sBatchFile = sTempDir & "\test_curl.bat"
+    sResponseFile = sTempDir & "\test_curl_response.txt"
+    
+    REM Crear batch para probar curl
+    sComando = "@echo off" & Chr(13) & Chr(10)
+    sComando = sComando & "curl --version > " & Chr(34) & sResponseFile & Chr(34) & " 2>&1" & Chr(13) & Chr(10)
+    
+    nFile = FreeFile()
+    Open sBatchFile For Output As #nFile
+    Print #nFile, sComando
+    Close #nFile
+    
+    Shell("cmd /c " & sBatchFile, 0, True)
+    Wait(2000)
+    
+    REM Leer respuesta
+    sRespuesta = ""
+    On Error Resume Next
+    nFile = FreeFile()
+    Open sResponseFile For Input As #nFile
+    While Not EOF(nFile)
+        Line Input #nFile, sLinea
+        sRespuesta = sRespuesta & sLinea & Chr(10)
+    Wend
+    Close #nFile
+    On Error GoTo 0
+    
+    If InStr(sRespuesta, "curl") > 0 Then
+        MsgBox "✓ CURL INSTALADO" & Chr(10) & Chr(10) & sRespuesta
+    Else
+        MsgBox "✗ CURL NO ENCONTRADO" & Chr(10) & Chr(10) & "Instalacion:" & Chr(10) & "1. Descargar: https://curl.se/windows/" & Chr(10) & "2. Extraer curl.exe a C:\Windows\System32\" & Chr(10) & "3. Reiniciar Excel/LibreOffice"
+    End If
+    
+    REM Limpiar
+    On Error Resume Next
+    Kill sBatchFile
+    Kill sResponseFile
+    On Error GoTo 0
+End Sub
+
+REM Test DALL-E API directamente
+Sub ProbarDALLEDirecto()
+    Dim sPrompt
+    Dim sResultado
+    
+    sPrompt = "A blue casual pants, professional product photography"
+    MsgBox "Probando DALL-E..." & Chr(10) & "Prompt: " & sPrompt
+    
+    sResultado = GenerarImagenDALLE(sPrompt)
+    
+    If Left(sResultado, 5) = "Error" Then
+        MsgBox "ERROR: " & sResultado & Chr(10) & Chr(10) & "Posibles causas:" & Chr(10) & "1. API key invalida/expirada" & Chr(10) & "2. Sin creditos en OpenAI" & Chr(10) & "3. DALL-E no habilitado" & Chr(10) & "4. Rate limit excedido"
+    Else
+        MsgBox "EXITO! URL generada:" & Chr(10) & sResultado
+    End If
+End Sub
