@@ -102,12 +102,12 @@ REM ============================================================
                             oSheet.getCellByPosition(4, nFila - 1).setString("Error en imagenes")
                             oSheet.getCellByPosition(5, nFila - 1).setString("")
                         Else
-                            REM Si sImagenes es una URL (contiene http), guardarla en columna F
-                            If InStr(sImagenes, "http") > 0 Then
+                            REM Si sImagenes contiene datos (no es error), guardar en columna F
+                            If Left(sImagenes, 7) <> "[Error]" And Len(Trim(sImagenes)) > 5 Then
                                 oSheet.getCellByPosition(4, nFila - 1).setString("Image generated")
                                 oSheet.getCellByPosition(5, nFila - 1).setString(sImagenes)
                             Else
-                                oSheet.getCellByPosition(4, nFila - 1).setString(sImagenes)
+                                oSheet.getCellByPosition(4, nFila - 1).setString("Error generating")
                                 oSheet.getCellByPosition(5, nFila - 1).setString("")
                             End If
                         End If
@@ -715,11 +715,11 @@ REM ============================================================
             sPromptLimpio = Replace(sPromptLimpio, "ú", "u")
             sPromptLimpio = Replace(sPromptLimpio, "ñ", "n")
             
-            REM Construir JSON para DALL-E
-            sJsonData = "{\" & Q & "model\" & Q & ": \" & Q & "dall-e-3\" & Q & ", "
-            sJsonData = sJsonData & "\" & Q & "prompt\" & Q & ": \" & Q & sPromptLimpio & "\" & Q & ", "
-            sJsonData = sJsonData & "\" & Q & "n\" & Q & ": 1, "
-            sJsonData = sJsonData & "\" & Q & "size\" & Q & ": \" & Q & "1024x1024\" & Q & "}"
+            REM Construir JSON para DALL-E (SIN espacios, SIN backslashes)
+            sJsonData = "{" & Q & "model" & Q & ":" & Q & "dall-e-3" & Q & ","
+            sJsonData = sJsonData & Q & "prompt" & Q & ":" & Q & sPromptLimpio & Q & ","
+            sJsonData = sJsonData & Q & "n" & Q & ":1,"
+            sJsonData = sJsonData & Q & "size" & Q & ":" & Q & "1024x1024" & Q & "}"
             
             On Error Resume Next
             
