@@ -98,6 +98,19 @@ REM ============================================================
                         nErrorAfterDalle = Err.Number
                         Err.Clear
                         
+                        REM DEBUG: Log what was returned
+                        On Error Resume Next
+                        Dim nDebugFile
+                        nDebugFile = FreeFile()
+                        Open Environ("TEMP") & "\macro_debug.log" For Append As #nDebugFile
+                        Print #nDebugFile, "Row " & nFila & " - After GenerarImagenesProducto:"
+                        Print #nDebugFile, "  sImagenes length: " & Len(sImagenes)
+                        Print #nDebugFile, "  sImagenes first 100 chars: " & Left(sImagenes, 100)
+                        Print #nDebugFile, "  Contains [Error]: " & (InStr(sImagenes, "[Error]") > 0)
+                        Close #nDebugFile
+                        Err.Clear
+                        On Error GoTo 0
+                        
                         If nErrorAfterDalle <> 0 Then
                             oSheet.getCellByPosition(4, nFila - 1).setString("Error en imagenes")
                             oSheet.getCellByPosition(5, nFila - 1).setString("")
@@ -610,74 +623,116 @@ REM ============================================================
     End Sub
 
         REM Genera imagenes del producto en diferentes contextos usando DALL-E
+        REM Genera imagenes del producto usando DALL-E 3 (SIMPLIFICADO - IGUAL A UBUNTU)
         Function GenerarImagenesProducto(sImageURL, sDescripcion, nFila)
-            Dim aImagenes(5) As String
-            Dim aContextos(2) As String
-            Dim aVistas(1) As String
-            Dim i, j, idx
-            Dim sPrompt
-            Dim sImagenURL
-            Dim sArchivoLocal
-            Dim sNombreBase
-            Dim sArticuloRef
-            Dim sCarpetaDestino
+            Dim sTempDir
+            Dim sBatchFile
+            Dim sResponseFile
+            Dim sJsonFile
             Dim sComando
+            Dim sRespuesta
+            Dim sResultado
+            Dim sGeneratedImageUrl
+            Dim nFile
             Dim Q
+            Dim sApiKey
+            Dim sJsonBody
             
             Q = Chr(34)
             
-            REM Definir carpeta de destino
-            sCarpetaDestino = "C:\macro_images"
+            sApiKey = "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"
             
-            REM Crear carpeta si no existe
-            sComando = "if not exist " & Q & sCarpetaDestino & Q & " mkdir " & Q & sCarpetaDestino & Q
-            Shell("cmd /c " & sComando, 0, True)
-            Wait(500)
+            sTempDir = Environ("TEMP")
+            sJsonFile = sTempDir & "\dalle_request_" & nFila & ".json"
+            sResponseFile = sTempDir & "\dalle_response_" & nFila & ".txt"
+            sBatchFile = sTempDir & "\dalle_call_" & nFila & ".bat"
             
-            REM Definir contextos y vistas
-            aContextos(0) = "urban city street background"
-            aContextos(1) = "beach seaside background"
-            aContextos(2) = "mountain rural countryside background"
+            REM Crear JSON simple (sin espacios alrededor de colones)
+            sJsonBody = "{" & Q & "model" & Q & ":" & Q & "dall-e-3" & Q & ","
+            sJsonBody = sJsonBody & Q & "prompt" & Q & ":" & Q & "Professional product photo of clothing item" & Q & ","
+            sJsonBody = sJsonBody & Q & "n" & Q & ":1,"
+            sJsonBody = sJsonBody & Q & "size" & Q & ":" & Q & "1024x1024" & Q & ","
+            sJsonBody = sJsonBody & Q & "quality" & Q & ":" & Q & "standard" & Q & "}"
             
-            aVistas(0) = "front view"
-            aVistas(1) = "side profile view"
+            On Error Resume Next
             
-            REM Extraer referencia de articulo de la URL
-            sArticuloRef = ExtraerArticuloRef(sImageURL)
-            If Len(Trim(sArticuloRef)) = 0 Then
-                sArticuloRef = "articulo_" & nFila
-            End If
+            REM Escribir JSON
+            nFile = FreeFile()
+            Open sJsonFile For Output As #nFile
+            Print #nFile, sJsonBody
+            Close #nFile
             
-            REM Nombre base para archivos
-            sNombreBase = sArticuloRef & "_"
+            REM Crear script batch para Windows
+            sComando = "@echo off" & Chr(13) & Chr(10)
+            sComando = sComando & "chcp 65001 > nul" & Chr(13) & Chr(10)
+            sComando = sComando & "curl -s -X POST " & Q & "https://api.openai.com/v1/images/generations" & Q & " "
+            sComando = sComando & "-H " & Q & "Content-Type: application/json" & Q & " "
+            sComando = sComando & "-H " & Q & "Authorization: Bearer " & sApiKey & Q & " "
+            sComando = sComando & "-d @" & Q & sJsonFile & Q & " "
+            sComando = sComando & "> " & Q & sResponseFile & Q & " 2>&1" & Chr(13) & Chr(10)
             
-            REM Generar 6 imagenes (3 contextos x 2 vistas)
-            idx = 1
-            For i = 0 To 2
-                For j = 0 To 1
-                    sPrompt = "Professional e-commerce product photography: " & sDescripcion & " displayed on a fashion model in a tasteful, professional manner, " & aVistas(j) & ", " & aContextos(i) & ", natural daylight, high quality, clean and professional style, suitable for online retail catalog"
-                    sImagenURL = GenerarImagenDALLE(sPrompt)
-                    
-                    REM Descargar imagen a carpeta local
-                    If Left(sImagenURL, 5) <> "Error" And Len(Trim(sImagenURL)) > 0 Then
-                        sArchivoLocal = DescargarImagenLocal(sImagenURL, sCarpetaDestino, sNombreBase & idx)
-                        aImagenes(idx - 1) = sArchivoLocal
-                    Else
-                        aImagenes(idx - 1) = "[Error]"
-                    End If
-                    
-                    idx = idx + 1
-                    Wait(2000)
-                Next j
-            Next i
+            nFile = FreeFile()
+            Open sBatchFile For Output As #nFile
+            Print #nFile, sComando
+            Close #nFile
             
-            REM Retornar array de rutas locales separadas por pipe
-            REM También retornar la primera URL DALL-E para column F
-            If Len(Trim(aImagenes(0))) > 0 And Left(aImagenes(0), 7) <> "[Error]" Then
-                GenerarImagenesProducto = aImagenes(0) & "|" & aImagenes(1) & "|" & aImagenes(2) & "|" & aImagenes(3) & "|" & aImagenes(4) & "|" & aImagenes(5)
+            Shell(sBatchFile, 0, True)
+            Wait(25000)
+            
+            REM Leer respuesta
+            sRespuesta = ""
+            On Error Resume Next
+            nFile = FreeFile()
+            Open sResponseFile For Input As #nFile
+            If Err.Number = 0 Then
+                While Not EOF(nFile)
+                    Dim sLinea
+                    Line Input #nFile, sLinea
+                    sRespuesta = sRespuesta & sLinea & Chr(10)
+                Wend
+                Close #nFile
             Else
-                GenerarImagenesProducto = "[Error]"
+                sRespuesta = ""
+                Err.Clear
             End If
+            On Error GoTo 0
+            
+            REM Extraer URL de imagen
+            sResultado = "Error generating image"
+            Dim nUrlStart, nUrlEnd
+            Dim sSearchStr
+            
+            On Error Resume Next
+            
+            If Len(Trim(sRespuesta)) > 0 Then
+                sSearchStr = Q & "url" & Q & ": " & Q
+                nUrlStart = InStr(sRespuesta, sSearchStr)
+                
+                If nUrlStart > 0 Then
+                    nUrlStart = nUrlStart + Len(sSearchStr)
+                    nUrlEnd = InStr(nUrlStart, sRespuesta, Q)
+                    
+                    If nUrlEnd > nUrlStart Then
+                        sGeneratedImageUrl = Mid(sRespuesta, nUrlStart, nUrlEnd - nUrlStart)
+                        
+                        If Len(Trim(sGeneratedImageUrl)) > 20 Then
+                            sResultado = sGeneratedImageUrl
+                        End If
+                    End If
+                End If
+            End If
+            
+            On Error GoTo 0
+            
+            REM Limpiar archivos temporales
+            On Error Resume Next
+            Kill sJsonFile
+            Kill sResponseFile
+            Kill sBatchFile
+            Err.Clear
+            On Error GoTo 0
+            
+            GenerarImagenesProducto = sResultado
         End Function
 
         REM Llama a DALL-E para generar una imagen
