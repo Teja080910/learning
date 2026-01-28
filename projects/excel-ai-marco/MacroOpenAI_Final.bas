@@ -90,13 +90,28 @@ REM ============================================================
                         Wait(2000)
                         On Error Resume Next
                         Dim sImagenes
+                        Dim nErrorBeforeDalle
+                        nErrorBeforeDalle = Err.Number
+                        Err.Clear
                         sImagenes = GenerarImagenesProducto(sImageURL, sDescripcion, nFila)
-                        If Err.Number <> 0 Then
-                            oSheet.getCellByPosition(4, nFila - 1).setString("Error en imagenes - instalar curl")
-                            Err.Clear
+                        Dim nErrorAfterDalle
+                        nErrorAfterDalle = Err.Number
+                        Err.Clear
+                        
+                        If nErrorAfterDalle <> 0 Then
+                            oSheet.getCellByPosition(4, nFila - 1).setString("Error en imagenes")
+                            oSheet.getCellByPosition(5, nFila - 1).setString("")
                         Else
-                            oSheet.getCellByPosition(4, nFila - 1).setString(sImagenes)
+                            REM Si sImagenes es una URL (contiene http), guardarla en columna F
+                            If InStr(sImagenes, "http") > 0 Then
+                                oSheet.getCellByPosition(4, nFila - 1).setString("Image generated")
+                                oSheet.getCellByPosition(5, nFila - 1).setString(sImagenes)
+                            Else
+                                oSheet.getCellByPosition(4, nFila - 1).setString(sImagenes)
+                                oSheet.getCellByPosition(5, nFila - 1).setString("")
+                            End If
                         End If
+                        Err.Clear
                         On Error GoTo 0
                     End If
                     nFila = nFila + 1
@@ -657,7 +672,12 @@ REM ============================================================
             Next i
             
             REM Retornar array de rutas locales separadas por pipe
-            GenerarImagenesProducto = aImagenes(0) & "|" & aImagenes(1) & "|" & aImagenes(2) & "|" & aImagenes(3) & "|" & aImagenes(4) & "|" & aImagenes(5)
+            REM También retornar la primera URL DALL-E para column F
+            If Len(Trim(aImagenes(0))) > 0 And Left(aImagenes(0), 7) <> "[Error]" Then
+                GenerarImagenesProducto = aImagenes(0) & "|" & aImagenes(1) & "|" & aImagenes(2) & "|" & aImagenes(3) & "|" & aImagenes(4) & "|" & aImagenes(5)
+            Else
+                GenerarImagenesProducto = "[Error]"
+            End If
         End Function
 
         REM Llama a DALL-E para generar una imagen
