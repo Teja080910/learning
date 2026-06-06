@@ -85,31 +85,33 @@ REM ============================================================
                         End If
                         oSheet.getCellByPosition(3, nFila - 1).setString(sKeywords)
                         
-                        REM Generar imagenes del producto
+                        REM Generar imagenes del producto (6 imagenes con diferentes contextos y vistas)
                         oSheet.getCellByPosition(4, nFila - 1).setString("Generando imagenes...")
                         Wait(2000)
                         On Error Resume Next
-                        Dim sImagenURL
-                        sImagenURL = GenerarImagenDALLEDirecto(sDescripcion)
+                        Dim sImagenes
+                        Dim nErrorBeforeDalle
+                        nErrorBeforeDalle = Err.Number
+                        Err.Clear
+                        sImagenes = GenerarImagenesProducto(sImageURL, sDescripcion, nFila)
                         Dim nErrorAfterDalle
                         nErrorAfterDalle = Err.Number
-                        Err.Clear
                         
-                        If nErrorAfterDalle <> 0 Or Left(sImagenURL, 5) = "Error" Then
+                        If nErrorAfterDalle <> 0 Or Left(sImagenes, 5) = "Error" Then
                             oSheet.getCellByPosition(4, nFila - 1).setString("Error en imagenes")
                             oSheet.getCellByPosition(5, nFila - 1).setString("")
                         Else
-                            REM Insertar imagen directamente desde la URL de DALL-E
-                            oSheet.getCellByPosition(4, nFila - 1).setString("Inserting image...")
-                            oSheet.getCellByPosition(5, nFila - 1).setString(sImagenURL)
+                            REM Separar las 6 rutas locales y colocarlas en columnas E-J
+                            Dim aURLs
+                            aURLs = Split(sImagenes, "|")
                             
-                            Dim bInsertOK
-                            bInsertOK = InsertarImagenDesdeURL(oDoc, oSheet, sImagenURL, nFila)
-                            
-                            If bInsertOK Then
-                                oSheet.getCellByPosition(4, nFila - 1).setString("Image saved")
-                            Else
-                                oSheet.getCellByPosition(4, nFila - 1).setString("URL saved (img pending)")
+                            If UBound(aURLs) >= 5 Then
+                                oSheet.getCellByPosition(4, nFila - 1).setString(aURLs(0))
+                                oSheet.getCellByPosition(5, nFila - 1).setString(aURLs(1))
+                                oSheet.getCellByPosition(6, nFila - 1).setString(aURLs(2))
+                                oSheet.getCellByPosition(7, nFila - 1).setString(aURLs(3))
+                                oSheet.getCellByPosition(8, nFila - 1).setString(aURLs(4))
+                                oSheet.getCellByPosition(9, nFila - 1).setString(aURLs(5))
                             End If
                         End If
                         Err.Clear
@@ -649,31 +651,30 @@ REM ============================================================
                 sArticuloRef = "articulo_" & nFila
             End If
             
-            REM Nombre base para archivos
+            REM Nombre base para archivos - usando nomenclatura F_XXXXX_1_1.jpg
             sNombreBase = sArticuloRef & "_"
             
             REM Generar 6 imagenes (3 contextos x 2 vistas)
             idx = 1
             For i = 0 To 2
                 For j = 0 To 1
-                    sPrompt = "Professional e-commerce product photography: " & sDescripcion & " displayed on a fashion model in a tasteful, professional manner, " & aVistas(j) & ", " & aContextos(i) & ", natural daylight, high quality, clean and professional style, suitable for online retail catalog"
+                    sPrompt = "Professional casual fashion product photography: " & sDescripcion & " on a model, " & aVistas(j) & ", " & aContextos(i) & ", natural daylight, high quality, professional style, suitable for online retail"
                     sImagenURL = GenerarImagenDALLE(sPrompt)
                     
-                    REM Descargar imagen a carpeta local
+                    REM Descargar imagen a carpeta local con nombre formato F_XXXXX_1_1.jpg, F_XXXXX_1_2.jpg, etc.
                     If Left(sImagenURL, 5) <> "Error" And Len(Trim(sImagenURL)) > 0 Then
-                        sArchivoLocal = DescargarImagenLocal(sImagenURL, sCarpetaDestino, sNombreBase & idx)
+                        sArchivoLocal = DescargarImagenLocal(sImagenURL, sCarpetaDestino, sNombreBase & (i + 1) & "_" & (j + 1))
                         aImagenes(idx - 1) = sArchivoLocal
                     Else
                         aImagenes(idx - 1) = "[Error]"
                     End If
                     
                     idx = idx + 1
-                    Wait(2000)
+                    Wait(3000)
                 Next j
             Next i
             
             REM Retornar array de rutas locales separadas por pipe
-            REM También retornar la primera URL DALL-E para column F
             If Len(Trim(aImagenes(0))) > 0 And Left(aImagenes(0), 7) <> "[Error]" Then
                 GenerarImagenesProducto = aImagenes(0) & "|" & aImagenes(1) & "|" & aImagenes(2) & "|" & aImagenes(3) & "|" & aImagenes(4) & "|" & aImagenes(5)
             Else
