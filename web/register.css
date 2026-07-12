@@ -1,0 +1,26 @@
+.input-class {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    border: 4px dotted #831515;
+    border-radius: 4px;
+}
+
+#label-id {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+button {
+    background-color: #831515;
+    color: white;
+    padding: 20px 40px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.register-button {
+    background-color: blue;
+}

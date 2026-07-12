@@ -1,0 +1,39 @@
+<html>
+
+<head>
+    <title>Register</title>
+    <link rel="stylesheet" href="register.css">
+    <style>
+        .register-button-parent {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div
+        style="width:100%; height:100%; display:flex; background-color: 0f0f0f; justify-content:center; align-items:center;">
+        <div
+            style="background-color: green; border-radius: 5%; width: 30%; height: fit-content; padding-bottom:2%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+            <h1>Register</h1>
+            <div>
+                <label id="label-id" for="username">Username:</label>
+                <input class="input-class" type="text" id="username" name="username" required><br><br>
+
+                <label id="label-id" for="email">Email:</label>
+                <input class="input-class" type="email" id="email" name="email" required><br><br>
+
+                <label id="label-id" for="password">Password:</label>
+                <input class="input-class" type="password" id="password" name="password" required><br><br>
+
+                <div class="register-button-parent">
+                    <button class="register-button">Register</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
