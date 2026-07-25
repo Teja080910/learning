@@ -49,7 +49,11 @@ app.post('/register', async (req, res) => {
         res.status(400).send('Error registering user');
         return;
     }
-    res.send('User registered successfully');
+    console.log('User registered successfully:', result);
+    res.send({
+        message: 'User registered successfully',
+        user: result
+    });
 });
 
 app.post('/login', async (req, res) => {
