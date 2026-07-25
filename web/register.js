@@ -172,6 +172,17 @@ registerButton.addEventListener("click", () => {
         appendedData.push(regusterData);
     }
 
+    const result = fetch("http://localhost:3000/register", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(regusterData)
+    })
+
+    const resultData = result.json();
+    console.log("Result Data: ", resultData);
+
     store.setItem("userData", JSON.stringify(appendedData));
 });
 
