@@ -19,14 +19,16 @@
 
 
 // module code
-import express from 'express';
 import cors from 'cors';
-import Register from './auth/register.js';
-import Login from './auth/login.js';
+import express from 'express';
+import authRoutes from './auth/route.js';
+import orderRoutes from './orders/route.js';
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use('/auth', authRoutes);
+app.use('/orders', orderRoutes);
 
 const PORT = process.env.PORT || 3000;
 
@@ -41,28 +43,6 @@ const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
     res.send('Hello World');
-});
-
-app.post('/register', async (req, res) => {
-    const result = await Register(req.body);
-    if (!result) {
-        res.status(400).send('Error registering user');
-        return;
-    }
-    console.log('User registered successfully:', result);
-    res.send({
-        message: 'User registered successfully',
-        user: result
-    });
-});
-
-app.post('/login', async (req, res) => {
-    const result = await Login(req.body);
-    if (!result) {
-        res.status(400).send('Invalid email or password');
-        return;
-    }
-    res.send('User logged in successfully');
 });
 
 app.listen(PORT, () => {
