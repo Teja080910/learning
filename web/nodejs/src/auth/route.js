@@ -1,29 +1,31 @@
-import { Router } from "express";
-import Login from "./login.js";
-import Register from "./register.js";
+import { Router } from 'express';
+import Login from './login.js';
+import Register from './register.js';
 
 const router = Router();
 
 router.post('/register', async (req, res) => {
-    const result = await Register(req.body);
-    if (!result) {
-        res.status(400).send('Error registering user');
-        return;
+    try {
+        const user = await Register(req.body);
+        res.status(201).json({
+            message: 'User registered successfully',
+            user
+        });
+    } catch (error) {
+        res.status(error.status || 500).json({ error: error.message });
     }
-    console.log('User registered successfully:', result);
-    res.send({
-        message: 'User registered successfully',
-        user: result
-    });
 });
 
 router.post('/login', async (req, res) => {
-    const result = await Login(req.body);
-    if (!result) {
-        res.status(400).send('Invalid email or password');
-        return;
+    try {
+        const user = await Login(req.body);
+        res.json({
+            message: 'User logged in successfully',
+            user
+        });
+    } catch (error) {
+        res.status(error.status || 500).json({ error: error.message });
     }
-    res.send('User logged in successfully');
 });
 
 export default router;

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(node --input-type=module -e \" import dotenv from 'dotenv'; dotenv.config(); import { Pool } from 'pg'; const pool = new Pool({ user: process.env.DB_USER, host: process.env.DB_HOST, database: process.env.DB_NAME, password: process.env.DB_PASSWORD, port: process.env.DB_PORT }); try { const res = await pool.query(\\\"SELECT table_name FROM information_schema.tables WHERE table_schema='public'\\\"); console.log('tables:', JSON.stringify(res.rows)); for (const t of res.rows) { const cols = await pool.query(\\\"SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='public' AND table_name=\\$1\\\", [t.table_name]); console.log(t.table_name, JSON.stringify(cols.rows)); } } catch (e) { console.log('DB ERROR:', e.message); } finally { await pool.end(); } \")",
+      "Shell(node --input-type=module -e \" import dotenv from 'dotenv'; dotenv.config(); import { Pool } from 'pg'; const pool = new Pool({ user: process.env.DB_USER, host: process.env.DB_HOST, database: 'postgres', password: process.env.DB_PASSWORD, port: process.env.DB_PORT }); try { const res = await pool.query('SELECT datname FROM pg_database'); console.log('databases:', JSON.stringify(res.rows)); } catch (e) { console.log('DB ERROR:', e.message); } finally { await pool.end(); } \")",
+      "Shell(npm:*)",
+      "Shell(node -e const p=require('./package.json');console.log(JSON.stringify(p.dependencies,null,1)))",
+      "Shell(node --input-type=module -e \" import dotenv from 'dotenv'; dotenv.config(); import { Pool } from 'pg'; const pool = new Pool({ user: process.env.DB_USER, host: process.env.DB_HOST, database: 'postgres', password: process.env.DB_PASSWORD, port: process.env.DB_PORT }); try { await pool.query('CREATE DATABASE myapp'); console.log('Created database myapp'); } catch (e) { console.log('CREATE result:', e.message); } finally { await pool.end(); } \")",
+      "Shell(sleep:*)",
+      "Shell(curl -s -X POST http://localhost:5000/auth/register -H Content-Type: application/json -d {\"username\":\"teja\",\"email\":\"teja@example.com\",\"password\":\"secret123\"})",
+      "Shell(curl -s -X POST http://localhost:5000/auth/login -H Content-Type: application/json -d {\"email\":\"teja@example.com\",\"password\":\"secret123\"})",
+      "Shell(curl -s -X POST http://localhost:5000/auth/login -H Content-Type: application/json -d {\"email\":\"teja@example.com\",\"password\":\"wrong\"})",
+      "Shell(curl -s -X POST http://localhost:5000/orders/create -H Content-Type: application/json -d {\"userId\":1,\"item\":\"Laptop\",\"amount\":1200.50})",
+      "Shell(curl -s http://localhost:5000/orders)",
+      "Shell(curl -s -X POST http://localhost:5000/timer -H Content-Type: application/json -d {\"duration\":5})",
+      "Shell(curl -s -X POST http://localhost:5000/timer -H Content-Type: application/json -d {\"duration\":-3})",
+      "Shell(curl -s -o /dev/null -w %{http_code}\\n http://localhost:3000/)",
+      "Shell(curl -s -o /dev/null -w %{http_code}\\n http://localhost:3000/orders)",
+      "Shell(curl -s -o /dev/null -w root: %{http_code}\\n http://localhost:3000/)",
+      "Shell(curl -s -o /dev/null -w orders route: %{http_code}\\n http://localhost:3000/orders)",
+      "Shell(curl -s http://localhost:3000/)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

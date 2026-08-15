@@ -1,47 +1,48 @@
-<html>
-
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
     <link rel="stylesheet" href="register.css">
-    <!-- <script src="register.js"></script> -->
-    <style>
-        .register-button-parent {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-    </style>
 </head>
 
 <body>
-    <div
-        style="width:100%; height:100%; display:flex; background-color: 0f0f0f; justify-content:center; align-items:center;">
-        <div id="register-container"
-            style="background-color: green; border-radius: 5%; width: 30%; height: fit-content; padding-bottom:2%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <h1>Register</h1>
-            <div>
-                <label class="label-id" id="username-label" for="username">Username:</label>
-                <input class="input-class" type="text" id="username" name="username" required><br><br>
+    <div class="page">
+        <div id="register-container" class="card">
+            <h1 class="title">Register</h1>
+            <p class="subtitle">Create your account to get started.</p>
 
-                <label class="label-id" id="email-label" for="email">Email:</label>
-                <input class="input-class" type="email" id="email" name="email" required><br><br>
-
-                <label class="label-id" id="password-label" for="password">Password:</label>
-                <input class="input-class" type="password" id="password" name="password" required><br><br>
-
-                <div class="register-button-parent">
-                    <button class="register-button" id="register">Register</button>
+            <form id="register-form" novalidate>
+                <div class="field">
+                    <label class="label-id" for="username">Username</label>
+                    <input class="input-class" type="text" id="username" name="username" required autocomplete="username">
                 </div>
 
-                <br />
+                <div class="field">
+                    <label class="label-id" for="email">Email</label>
+                    <input class="input-class" type="email" id="email" name="email" required autocomplete="email">
+                </div>
+
+                <div class="field">
+                    <label class="label-id" for="password">Password</label>
+                    <input class="input-class" type="password" id="password" name="password" required autocomplete="new-password">
+                </div>
 
                 <div class="register-button-parent">
-                    <button class="register-button" onclick="changeColor()">Change Color</button>
+                    <button type="submit" class="register-button" id="register">Register</button>
                 </div>
+            </form>
+
+            <div class="register-button-parent">
+                <button type="button" class="register-button secondary" onclick="changeColor()">Change Color</button>
             </div>
+
+            <p id="message" class="message" role="status" aria-live="polite"></p>
         </div>
     </div>
+
+    <script src="register.js"></script>
 </body>
-<script src="register.js"></script>
 
 </html>

@@ -9,7 +9,7 @@ const changeColor = () => {
     document.getElementById("register-container").style.backgroundColor = randomColor;
 }
 
-// let 
+// let
 // ADU NRI RA
 // var
 // BDU RI RA
@@ -113,77 +113,93 @@ const changeColor = () => {
 const usernameInput = document.getElementById("username");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
+const form = document.getElementById("register-form");
+const messageEl = document.getElementById("message");
 
 const store = localStorage;
 
 usernameInput.addEventListener("input", () => {
-    // console.log("Username: " + usernameInput.value);
     usernameInput.value = usernameInput.value.trim();
 });
 
 emailInput.addEventListener("input", () => {
-    // console.log("Email: " + emailInput.value);
     emailInput.value = emailInput.value.trim();
 });
 
 passwordInput.addEventListener("input", () => {
-    // console.log("Password: " + passwordInput.value);
     passwordInput.value = passwordInput.value.trim();
 });
 
-const registerButton = document.getElementById("register");
-registerButton.addEventListener("click", () => {
-    const regusterData = {
+const showMessage = (text, isError = false) => {
+    messageEl.textContent = text;
+    messageEl.style.color = isError ? "#d32f2f" : "#2e7d32";
+};
+
+const validate = (userData) => {
+    if (!userData.username) return "Username cannot be empty. Please enter a username.";
+    if (!userData.email) return "Email cannot be empty. Please enter an email.";
+    if (!userData.password) return "Password cannot be empty. Please enter a password.";
+
+    const existingData = store.getItem("userData");
+    if (existingData) {
+        const parsedData = JSON.parse(existingData);
+        if (parsedData.some(user => user.username === userData.username)) {
+            return "Username already exists. Please choose a different username.";
+        }
+        if (parsedData.some(user => user.email === userData.email)) {
+            return "Email already exists. Please choose a different email.";
+        }
+        if (parsedData.some(user => user.password === userData.password)) {
+            return "Password already exists. Please choose a different password.";
+        }
+    }
+    return null;
+};
+
+form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const registerData = {
         username: usernameInput.value,
         email: emailInput.value,
         password: passwordInput.value
-    }
-    console.log("user Data: ", regusterData);
-    const existingData = store.getItem("userData");
-    const appendedData = existingData ? JSON.parse(existingData) : [];
-    if (!regusterData.username) {
-        alert("Username cannot be empty. Please enter a username.");
+    };
+    console.log("user Data: ", registerData);
+
+    const validationError = validate(registerData);
+    if (validationError) {
+        showMessage(validationError, true);
         return;
     }
-    if (!regusterData.email) {
-        alert("Email cannot be empty. Please enter an email.");
-        return;
-    }
-    if (!regusterData.password) {
-        alert("Password cannot be empty. Please enter a password.");
-        return;
-    }
-    if (existingData) {
-        const parsedData = JSON.parse(existingData);
-        if (parsedData.filter(user => user.username === regusterData.username).length > 0) {
-            alert("Username already exists. Please choose a different username.");
+
+    try {
+        const response = await fetch("http://localhost:5000/auth/register", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(registerData)
+        });
+
+        const resultData = await response.json();
+        console.log("Result Data: ", resultData);
+
+        if (!response.ok) {
+            showMessage(resultData.error || "Registration failed.", true);
             return;
         }
-        if (parsedData.filter(user => user.email === regusterData.email).length > 0) {
-            alert("Email already exists. Please choose a different email.");
-            return;
-        }
-        if (parsedData.filter(user => user.password === regusterData.password).length > 0) {
-            alert("Password already exists. Please choose a different password.");
-            return;
-        }
-        appendedData.push(regusterData);
-    } else {
-        appendedData.push(regusterData);
+
+        const existingData = store.getItem("userData");
+        const appendedData = existingData ? JSON.parse(existingData) : [];
+        appendedData.push(registerData);
+        store.setItem("userData", JSON.stringify(appendedData));
+
+        showMessage("Registration successful!");
+        form.reset();
+    } catch (error) {
+        console.error("Registration error:", error);
+        showMessage("Could not reach the server. Is it running on port 5000?", true);
     }
-
-    const result = fetch("http://localhost:3000/register", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(regusterData)
-    })
-
-    const resultData = result.json();
-    console.log("Result Data: ", resultData);
-
-    store.setItem("userData", JSON.stringify(appendedData));
 });
 
 // sessionStorage

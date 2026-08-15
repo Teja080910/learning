@@ -1,29 +1,139 @@
-.input-class {
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(160deg, #2f6fed 0%, #7c3aed 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.page {
     width: 100%;
-    padding: 10px;
-    margin: 5px 0;
-    border: 4px dotted #831515;
-    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 420px;
+    padding: 40px 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: background-color 0.3s ease;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #5b6472;
+    margin-bottom: 28px;
+}
+
+#register-form {
+    width: 100%;
+}
+
+.field {
+    margin-bottom: 18px;
+    width: 100%;
 }
 
 .label-id {
-    margin-bottom: 5px;
-    font-weight: bold;
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1a1a2e;
 }
 
-button {
-    background-color: #831515;
-    color: white;
-    padding: 20px 40px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+.input-class {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 16px;
+    border: 2px solid #d9dee7;
+    border-radius: 10px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    color: #1a1a2e;
 }
 
-p {
-    color: #831515;
+.input-class:focus {
+    outline: none;
+    border-color: #2f6fed;
+    box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.2);
+}
+
+.input-class:focus:invalid {
+    border-color: #d32f2f;
+    box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15);
+}
+
+.register-button-parent {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin-top: 8px;
 }
 
 .register-button {
-    background-color: blue;
+    background-color: #2f6fed;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    width: 100%;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.register-button:hover {
+    background-color: #2459c2;
+}
+
+.register-button:active {
+    transform: scale(0.98);
+}
+
+.register-button:focus-visible {
+    outline: 3px solid rgba(47, 111, 237, 0.4);
+    outline-offset: 2px;
+}
+
+.register-button.secondary {
+    background-color: #eef1f6;
+    color: #1a1a2e;
+    margin-top: 12px;
+}
+
+.register-button.secondary:hover {
+    background-color: #dfe4ec;
+}
+
+.message {
+    margin-top: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    color: #5b6472;
+    min-height: 20px;
 }
