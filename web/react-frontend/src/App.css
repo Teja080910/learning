@@ -32,6 +32,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -45,10 +46,10 @@
   background-color: #f0f0f0;
   padding: 20px;
   border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.App-nav {
+.navbar {
   margin-top: 20px;
   background-color: #282c34;
   padding: 10px;
@@ -57,7 +58,7 @@
   color: white;
 }
 
-.App-nav a {
+.navbar a {
   color: white;
   text-decoration: none;
   margin: 0 10px;

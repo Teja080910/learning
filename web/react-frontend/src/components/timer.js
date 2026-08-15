@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createTimer } from '../lib/api-functions/timer';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
 
 const Timer = (props) => {
     const [time, setTime] = useState(0);
@@ -39,9 +41,29 @@ const Timer = (props) => {
         <div className="timer">
             <h1>Welcome to the Timer! {props.name}</h1>
             <h1>Timer: {time} seconds</h1>
-            <button onClick={handleStart}>Start</button>
-            <button onClick={handleStop}>Stop</button>
-            <button onClick={handleReset}>Reset</button>
+            <Stack direction="row" spacing={2} style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                <Button variant="contained" color="primary" onClick={handleStart} disabled={isRunning}>
+                    Start
+                </Button>
+                <Button variant="contained" color="secondary" onClick={handleStop} disabled={!isRunning}>
+                    Stop
+                </Button>
+                <Button variant="contained" color="error" onClick={handleReset}>
+                    Reset
+                </Button>
+            </Stack>
+
+            <h1>Completed Concepts</h1>
+            <Stack direction="column" spacing={4}>
+                <p>Set up react js ( basic concepts )</p>
+                <p>React components and props</p>
+                <p>React state and lifecycle</p>
+                <p>React hooks ( useState, useEffect )</p>
+                <p>React events</p>
+                <p>React router</p>
+                <p>API Integration</p>
+                <p>Material UI</p>
+            </Stack>
         </div>
     );
 };
